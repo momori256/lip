@@ -43,8 +43,8 @@ impl Token {
 }
 
 pub fn tokenize(expr: &str) -> Result<Vec<Token>, TokenizeErr> {
-    expr.replace("(", "( ")
-        .replace(")", " )")
+    expr.replace('(', "( ")
+        .replace(')', " )")
         .split_whitespace()
         .map(Token::parse)
         .collect()
@@ -70,7 +70,7 @@ mod tests {
         assert!(tokens.is_err());
         match tokens {
             Err(TokenizeErr::Parse(e)) => assert_eq!("Invalid token `$`", e),
-            _ => assert!(false),
+            _ => panic!(),
         };
     }
 }

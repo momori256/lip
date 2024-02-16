@@ -17,7 +17,7 @@ fn main() -> io::Result<()> {
         if input == ":exit" {
             break;
         }
-        let tokens = tokenize(&input);
+        let tokens = tokenize(input);
         if let Err(e) = tokens {
             print(&format!("Failed to tokenize: {e:?}\n"))?;
             continue;

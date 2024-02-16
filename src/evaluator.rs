@@ -35,7 +35,7 @@ mod tests {
         let tokens = tokenizer::tokenize("(& true false)")?;
         let expr = parser::parse(&tokens)?;
         let output = eval(&expr);
-        assert_eq!(false, output);
+        assert!(!output);
         Ok(())
     }
 
@@ -45,7 +45,7 @@ mod tests {
         let tokens = tokenizer::tokenize("(^ (& true (| false false)))")?;
         let expr = parser::parse(&tokens)?;
         let output = eval(&expr);
-        assert_eq!(true, output);
+        assert!(output);
         Ok(())
     }
 }
