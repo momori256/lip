@@ -15,7 +15,7 @@ pub fn eval(expr: &Expr) -> bool {
         Expr::Not(expr) => {
             let expr = eval(expr);
             !expr
-        },
+        }
         Expr::True => true,
         Expr::False => false,
     }
