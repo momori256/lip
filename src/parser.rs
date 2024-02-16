@@ -46,7 +46,9 @@ fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     match operator {
         Token::And | Token::Or => parse_binary_operator(operator, tokens),
         Token::Not => parse_unary_operator(operator, tokens),
-        _ => Ok((Expr::True, 1)),
+        _ => Err(ParserErr::Parse(format!(
+            "`{operator:?}` is not an operator"
+        ))),
     }
 }
 
@@ -55,7 +57,7 @@ fn parse_binary_operator(op: Token, tokens: &[Token]) -> Result<(Expr, usize), P
     let (lhs, ln) = parse_internal(&tokens[2..])?;
     let (rhs, rn) = parse_internal(&tokens[2 + ln..])?;
     let cnt = 2 + ln + rn;
-    if tokens[cnt] != Token::Rparen {
+    if tokens.len() <= cnt || tokens[cnt] != Token::Rparen {
         return Err(ParserErr::Parse("`(` is not closed".to_string()));
     }
     let lhs = Box::new(lhs);
@@ -134,7 +136,22 @@ mod tests {
 
     #[test]
     fn parse_unclosed_expr_fail() -> Result<(), TokenizeErr> {
-        let tokens = tokenizer::tokenize("(^ false")?;
+        {
+            let tokens = tokenizer::tokenize("(^ false")?;
+            let expr = parse_internal(&tokens);
+            assert!(expr.is_err());
+        }
+        {
+            let tokens = tokenizer::tokenize("(& false true")?;
+            let expr = parse_internal(&tokens);
+            assert!(expr.is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn parse_invalid_expr_fail() -> Result<(), TokenizeErr> {
+        let tokens = tokenizer::tokenize("(true)")?;
         let expr = parse_internal(&tokens);
         assert!(expr.is_err());
         Ok(())
