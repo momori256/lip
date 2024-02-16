@@ -22,7 +22,12 @@ pub enum Expr {
     False,
 }
 
-pub fn parse(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
+pub fn parse(tokens: &[Token]) -> Result<Expr, ParserErr> {
+    let (expr, _) = parse_internal(tokens)?;
+    Ok(expr)
+}
+
+fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     if tokens.is_empty() {
         return Err(ParserErr::Parse("no token".to_string()));
     }
@@ -47,8 +52,8 @@ pub fn parse(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
 
 /// Parse binary operator expression: (op expr expr).
 fn parse_binary_operator(op: Token, tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
-    let (lhs, ln) = parse(&tokens[2..])?;
-    let (rhs, rn) = parse(&tokens[2 + ln..])?;
+    let (lhs, ln) = parse_internal(&tokens[2..])?;
+    let (rhs, rn) = parse_internal(&tokens[2 + ln..])?;
     let cnt = 2 + ln + rn;
     if tokens[cnt] != Token::Rparen {
         return Err(ParserErr::Parse("`(` is not closed".to_string()));
@@ -67,7 +72,7 @@ fn parse_binary_operator(op: Token, tokens: &[Token]) -> Result<(Expr, usize), P
 
 /// Parse unary operator expression: (op expr).
 fn parse_unary_operator(op: Token, tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
-    let (expr, ln) = parse(&tokens[2..])?;
+    let (expr, ln) = parse_internal(&tokens[2..])?;
     let cnt = 2 + ln;
     if tokens.len() <= cnt || tokens[cnt] != Token::Rparen {
         return Err(ParserErr::Parse("`(` is not closed".to_string()));
@@ -103,7 +108,7 @@ mod tests {
     #[test]
     fn parse_and_succeed() -> Result<(), TokenizeErr> {
         let tokens = tokenizer::tokenize("(& true true)")?;
-        let expr = parse(&tokens);
+        let expr = parse_internal(&tokens);
         assert_eq!((and(True, True), tokens.len()), expr.unwrap());
         Ok(())
     }
@@ -111,7 +116,7 @@ mod tests {
     #[test]
     fn parse_or_succeed() -> Result<(), TokenizeErr> {
         let tokens = tokenizer::tokenize("(| true true)")?;
-        let expr = parse(&tokens);
+        let expr = parse_internal(&tokens);
         assert_eq!((or(True, True), tokens.len()), expr.unwrap());
         Ok(())
     }
@@ -119,7 +124,7 @@ mod tests {
     #[test]
     fn parse_nested_expr_succeed() -> Result<(), TokenizeErr> {
         let tokens = tokenizer::tokenize("(| (& true false) (^ (^ true)))")?;
-        let expr = parse(&tokens);
+        let expr = parse_internal(&tokens);
         assert_eq!(
             (or(and(True, False), not(not(True))), tokens.len()),
             expr.unwrap()
@@ -130,7 +135,7 @@ mod tests {
     #[test]
     fn parse_unclosed_expr_fail() -> Result<(), TokenizeErr> {
         let tokens = tokenizer::tokenize("(^ false")?;
-        let expr = parse(&tokens);
+        let expr = parse_internal(&tokens);
         assert!(expr.is_err());
         Ok(())
     }
