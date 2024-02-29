@@ -13,11 +13,21 @@ impl std::fmt::Display for ParserErr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operator {
     And,
     Or,
     Not,
+}
+
+impl std::fmt::Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::And => write!(f, "&"),
+            Operator::Or => write!(f, "|"),
+            Operator::Not => write!(f, "^"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
