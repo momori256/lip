@@ -31,8 +31,8 @@ impl Token {
             "&" => Ok(And),
             "|" => Ok(Or),
             "^" => Ok(Not),
-            "true" => Ok(True),
-            "false" => Ok(False),
+            "T" => Ok(True),
+            "F" => Ok(False),
             _ => Err(TokenizeErr::Parse(format!("Invalid token `{str}`"))),
         }
     }
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn tokenize_valid_tokens_parsed_successfully() {
-        let tokens = tokenize("( ) & | ^ true false");
+        let tokens = tokenize("( ) & | ^ T F");
         assert_eq!(
             vec![Lparen, Rparen, And, Or, Not, True, False],
             tokens.unwrap()
@@ -62,8 +62,7 @@ mod tests {
 
     #[test]
     fn tokenize_invalid_token_cannot_be_parsed() {
-        let tokens = tokenize("( ) & | ^ true false $");
-        assert!(tokens.is_err());
+        let tokens = tokenize("( ) & | ^ T F $");
         match tokens {
             Err(TokenizeErr::Parse(e)) => assert_eq!("Invalid token `$`", e),
             _ => panic!(),
