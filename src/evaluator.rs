@@ -30,8 +30,8 @@ impl std::fmt::Display for Value {
 
 fn eval_bool_args(args: &[Expr]) -> Result<impl Iterator<Item = bool>, EvalErr> {
     let args: Vec<Value> = args
-        .into_iter()
-        .map(|arg| eval(arg))
+        .iter()
+        .map(eval)
         .collect::<Result<Vec<Value>, EvalErr>>()?;
     if args.iter().any(|arg| !matches!(arg, Value::Bool(_))) {
         return Err(EvalErr::Eval("`operand must be bool".to_string()));
