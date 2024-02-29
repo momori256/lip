@@ -3,15 +3,11 @@ pub enum TokenizeErr {
     Parse(String),
 }
 
-impl std::error::Error for TokenizeErr {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
+impl std::error::Error for TokenizeErr {}
 
 impl std::fmt::Display for TokenizeErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+        write!(f, "failed to tokenize")
     }
 }
 
