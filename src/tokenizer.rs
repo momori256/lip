@@ -11,7 +11,7 @@ impl std::fmt::Display for TokenizeErr {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Lparen,
     Rparen,
@@ -21,6 +21,8 @@ pub enum Token {
     True,
     False,
     If,
+    Def,
+    Ident(String),
 }
 
 impl Token {
@@ -35,6 +37,8 @@ impl Token {
             "T" => Ok(True),
             "F" => Ok(False),
             "if" => Ok(If),
+            "def" => Ok(Def),
+            str if str.chars().all(|c| c.is_ascii_lowercase()) => Ok(Ident(str.to_string())),
             _ => Err(TokenizeErr::Parse(format!("Invalid token `{str}`"))),
         }
     }
@@ -55,9 +59,18 @@ mod tests {
 
     #[test]
     fn tokenize_valid_tokens_parsed_successfully() {
-        let tokens = tokenize("( ) & | ^ T F if");
+        let tokens = tokenize("( ) & | ^ T F if def");
         assert_eq!(
-            vec![Lparen, Rparen, And, Or, Not, True, False, If],
+            vec![Lparen, Rparen, And, Or, Not, True, False, If, Def],
+            tokens.unwrap()
+        );
+    }
+
+    #[test]
+    fn tokenize_identifier_succeed() {
+        let tokens = tokenize("myvar abc");
+        assert_eq!(
+            vec![Ident("myvar".to_string()), Ident("abc".to_string())],
             tokens.unwrap()
         );
     }

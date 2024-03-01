@@ -80,6 +80,7 @@ pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
             };
             eval(if cond { then } else { other })
         }
+        Expr::Def(ident, expr) => eval(expr),
     }
 }
 
@@ -147,6 +148,15 @@ mod tests {
             Err(EvalErr::Eval(_)) => (),
             _ => panic!(),
         }
+        Ok(())
+    }
+
+    #[test]
+    fn eval_def_succeed() -> TestResult {
+        let tokens = tokenizer::tokenize("(def myvar (& T T F))")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr)?;
+        assert_eq!(Value::Bool(false), value);
         Ok(())
     }
 }
