@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::environment::Environment;
 use crate::parser::{self, Expr};
 
@@ -73,6 +75,22 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
                     Ok(Value::Bool(!operands[0]))
                 }
             },
+            Value::Lambda(args, expr) => {
+                if args.len() != operands.len() {
+                    return Err(EvalErr::Eval(format!(
+                        "the number of arguments ({}) is not the same as that of parameters ({})",
+                        args.len(),
+                        operands.len()
+                    )));
+                }
+                let operands: Vec<Value> = operands
+                    .into_iter()
+                    .map(|operand| eval(operand, env))
+                    .collect::<Result<_, EvalErr>>()?;
+                let data: HashMap<String, Value> = args.into_iter().zip(operands).collect();
+                let mut inner = Environment::new(data, Some(&env));
+                eval(&expr, &mut inner)
+            }
             operator => Err(EvalErr::Eval(format!("`{operator} is not an operator`"))),
         },
         Expr::If(parser::If { cond, then, other }) => {
@@ -91,7 +109,7 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
             env.add(ident.to_string(), result.clone());
             Ok(result)
         }
-        Expr::Lambda(_, _) => todo!(),
+        Expr::Lambda(args, expr) => Ok(Value::Lambda(args.clone(), (**expr).clone())),
         Expr::Ident(ident) => {
             if let Some(value) = env.get(ident) {
                 Ok(value.clone())
@@ -108,6 +126,18 @@ mod tests {
     use crate::{parser, tokenizer};
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    fn and(exprs: Vec<Expr>) -> Expr {
+        call(Expr::Operator(parser::Operator::And), exprs)
+    }
+
+    fn call(operator: Expr, operands: Vec<Expr>) -> Expr {
+        Expr::Call(Box::new(operator), operands)
+    }
+
+    fn ident(ident: &str) -> Expr {
+        Expr::Ident(ident.to_string())
+    }
 
     #[test]
     fn eval_bool_succeed() -> TestResult {
@@ -204,7 +234,40 @@ mod tests {
         let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
         let expr = parser::parse(&tokens)?;
         let value = eval(&expr, &mut Environment::default())?;
-        assert_eq!(Value::Bool(false), value);
+        assert_eq!(
+            Value::Lambda(
+                vec!["a".to_string(), "b".to_string()],
+                and(vec![ident("a"), ident("b"), Expr::Bool(true)])
+            ),
+            value
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn eval_call_lambda_succeed() -> TestResult {
+        let tokens = tokenizer::tokenize("((lambda (a b c) (| a b c)) F F T)")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr, &mut Environment::default())?;
+        assert_eq!(Value::Bool(true), value);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_def_lambda_succeed() -> TestResult {
+        let mut env = Environment::default();
+        {
+            let tokens = tokenizer::tokenize("(def nand (lambda (a b) (^ (& a b))))")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert!(matches!(value, Value::Lambda(_, _)));
+        }
+        {
+            let tokens = tokenizer::tokenize("(nand T T)")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert_eq!(Value::Bool(false), value);
+        }
         Ok(())
     }
 }
