@@ -54,6 +54,7 @@ pub enum Expr {
     Call(Box<Expr>, Vec<Expr>),
     If(If),
     Def(String, Box<Expr>),
+    Ident(String),
 }
 
 pub fn parse(tokens: &[Token]) -> Result<Expr, ParserErr> {
@@ -73,6 +74,7 @@ fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
             Token::And => Ok((Expr::Operator(Operator::And), 1)),
             Token::Or => Ok((Expr::Operator(Operator::Or), 1)),
             Token::Not => Ok((Expr::Operator(Operator::Not), 1)),
+            Token::Ident(ident) => Ok((Expr::Ident(ident.to_string()), 1)),
             _ => Err(ParserErr::Parse(format!("invalid token `{first:?}`"))),
         };
     }
@@ -193,6 +195,10 @@ mod tests {
         Expr::Def(ident.to_string(), Box::new(expr))
     }
 
+    fn ident(ident: &str) -> Expr {
+        Expr::Ident(ident.to_string())
+    }
+
     #[test]
     fn parse_bool_succeed() -> Result<(), Box<dyn std::error::Error>> {
         let tokens = tokenizer::tokenize("T")?;
@@ -277,6 +283,22 @@ mod tests {
             def(
                 "myvar",
                 and(vec![Expr::Bool(true), Expr::Bool(true), Expr::Bool(false)])
+            ),
+            expr
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_ident_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("(if a (& T T) (| b c))")?;
+        let (expr, cnt) = parse_internal(&tokens)?;
+        assert_eq!(tokens.len(), cnt);
+        assert_eq!(
+            if_expr(
+                ident("a"),
+                and(vec![Expr::Bool(true), Expr::Bool(true)]),
+                or(vec![ident("b"), ident("c")])
             ),
             expr
         );

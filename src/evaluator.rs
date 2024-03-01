@@ -14,7 +14,7 @@ impl std::fmt::Display for EvalErr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Value {
     Bool(bool),
     Operator(parser::Operator),
@@ -84,7 +84,18 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
             };
             eval(if cond { then } else { other }, env)
         }
-        Expr::Def(ident, expr) => eval(expr, env),
+        Expr::Def(ident, expr) => {
+            let result = eval(expr, env)?;
+            env.add(ident.to_string(), result.clone());
+            Ok(result)
+        }
+        Expr::Ident(ident) => {
+            if let Some(value) = env.get(ident) {
+                Ok(value.clone())
+            } else {
+                Err(EvalErr::Eval(format!("`{ident}` is not defined")))
+            }
+        }
     }
 }
 
@@ -169,6 +180,18 @@ mod tests {
             let expr = parser::parse(&tokens)?;
             let value = eval(&expr, &mut env)?;
             assert_eq!(Value::Bool(false), value);
+        }
+        {
+            let tokens = tokenizer::tokenize("(def myvar (& T T T))")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert_eq!(Value::Bool(true), value);
+        }
+        {
+            let tokens = tokenizer::tokenize("myvar")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert_eq!(Value::Bool(true), value);
         }
         Ok(())
     }
