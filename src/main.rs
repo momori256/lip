@@ -18,6 +18,10 @@ fn main() -> io::Result<()> {
         if input == ":exit" {
             break;
         }
+        if input == ":env" {
+            print(&format!("{env:?}\n"))?;
+            continue;
+        }
         let tokens = tokenize(input);
         if let Err(e) = tokens {
             print(&format!("Failed to tokenize: {e:?}\n"))?;
