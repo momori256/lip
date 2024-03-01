@@ -1,3 +1,4 @@
+use crate::environment::Environment;
 use crate::parser::{self, Expr};
 
 #[derive(Debug)]
@@ -28,10 +29,13 @@ impl std::fmt::Display for Value {
     }
 }
 
-fn eval_bool_operands(operands: &[Expr]) -> Result<impl Iterator<Item = bool>, EvalErr> {
+fn eval_bool_operands(
+    operands: &[Expr],
+    env: &mut Environment,
+) -> Result<impl Iterator<Item = bool>, EvalErr> {
     let operands: Vec<Value> = operands
         .iter()
-        .map(eval)
+        .map(|operand| eval(operand, env))
         .collect::<Result<Vec<Value>, EvalErr>>()?;
     if operands.iter().any(|arg| !matches!(arg, Value::Bool(_))) {
         return Err(EvalErr::Eval("`operand must be bool".to_string()));
@@ -43,22 +47,22 @@ fn eval_bool_operands(operands: &[Expr]) -> Result<impl Iterator<Item = bool>, E
     Ok(operands)
 }
 
-pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
+pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
     match expr {
         Expr::Bool(b) => Ok(Value::Bool(*b)),
         Expr::Operator(o) => Ok(Value::Operator(*o)),
-        Expr::Call(operator, operands) => match eval(operator)? {
+        Expr::Call(operator, operands) => match eval(operator, env)? {
             Value::Operator(operator) => match operator {
                 parser::Operator::And => {
-                    let result = eval_bool_operands(operands)?.fold(true, |acc, b| acc & b);
+                    let result = eval_bool_operands(operands, env)?.fold(true, |acc, b| acc & b);
                     Ok(Value::Bool(result))
                 }
                 parser::Operator::Or => {
-                    let result = eval_bool_operands(operands)?.fold(false, |acc, b| acc | b);
+                    let result = eval_bool_operands(operands, env)?.fold(false, |acc, b| acc | b);
                     Ok(Value::Bool(result))
                 }
                 parser::Operator::Not => {
-                    let operands: Vec<bool> = eval_bool_operands(operands)?.collect();
+                    let operands: Vec<bool> = eval_bool_operands(operands, env)?.collect();
                     if operands.len() != 1 {
                         return Err(EvalErr::Eval(format!(
                             "the number of arguments of {operator} must be 1"
@@ -70,7 +74,7 @@ pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
             operator => Err(EvalErr::Eval(format!("`{operator} is not an operator`"))),
         },
         Expr::If(parser::If { cond, then, other }) => {
-            let cond = match eval(cond)? {
+            let cond = match eval(cond, env)? {
                 Value::Bool(b) => b,
                 value => {
                     return Err(EvalErr::Eval(format!(
@@ -78,9 +82,9 @@ pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
                     )))
                 }
             };
-            eval(if cond { then } else { other })
+            eval(if cond { then } else { other }, env)
         }
-        Expr::Def(ident, expr) => eval(expr),
+        Expr::Def(ident, expr) => eval(expr, env),
     }
 }
 
@@ -95,7 +99,7 @@ mod tests {
     fn eval_bool_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("T")?;
         let expr = parser::parse(&tokens)?;
-        let value = eval(&expr)?;
+        let value = eval(&expr, &mut Environment::default())?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -105,7 +109,7 @@ mod tests {
         // true & (false | false | true | false) & (!false) -> true
         let tokens = tokenizer::tokenize("(& T (| F F T F) (^ F))")?;
         let expr = parser::parse(&tokens)?;
-        let value = eval(&expr)?;
+        let value = eval(&expr, &mut Environment::default())?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -115,7 +119,7 @@ mod tests {
         // if true & true { true } else { false | false } -> true
         let tokens = tokenizer::tokenize("(if (& T T) T (| F F))")?;
         let expr = parser::parse(&tokens)?;
-        let value = eval(&expr)?;
+        let value = eval(&expr, &mut Environment::default())?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -125,7 +129,7 @@ mod tests {
         // if !(true & true) { true } else { false | false } -> true
         let tokens = tokenizer::tokenize("(if (^ (& T T)) & |)")?;
         let expr = parser::parse(&tokens)?;
-        let value = eval(&expr)?;
+        let value = eval(&expr, &mut Environment::default())?;
         assert_eq!(Value::Operator(parser::Operator::Or), value);
         Ok(())
     }
@@ -135,7 +139,7 @@ mod tests {
         // if true { true & false } else { true | false }
         let tokens = tokenizer::tokenize("((if T & |) T F)")?;
         let expr = parser::parse(&tokens)?;
-        let value = eval(&expr)?;
+        let value = eval(&expr, &mut Environment::default())?;
         assert_eq!(Value::Bool(false), value);
         Ok(())
     }
@@ -144,7 +148,7 @@ mod tests {
     fn eval_invalid_operator_fail() -> TestResult {
         let tokens = tokenizer::tokenize("(T T F)")?;
         let expr = parser::parse(&tokens)?;
-        match eval(&expr) {
+        match eval(&expr, &mut Environment::default()) {
             Err(EvalErr::Eval(_)) => (),
             _ => panic!(),
         }
@@ -153,10 +157,19 @@ mod tests {
 
     #[test]
     fn eval_def_succeed() -> TestResult {
-        let tokens = tokenizer::tokenize("(def myvar (& T T F))")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr)?;
-        assert_eq!(Value::Bool(false), value);
+        let mut env = Environment::default();
+        {
+            let tokens = tokenizer::tokenize("(def myvar (& T T F))")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert_eq!(Value::Bool(false), value);
+        }
+        {
+            let tokens = tokenizer::tokenize("myvar")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert_eq!(Value::Bool(false), value);
+        }
         Ok(())
     }
 }

@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use lip::{evaluator::eval, parser::parse, tokenizer::tokenize};
+use lip::{evaluator::eval, parser::parse, tokenizer::tokenize, environment::Environment};
 
 fn main() -> io::Result<()> {
     fn print(s: &str) -> io::Result<()> {
@@ -8,6 +8,7 @@ fn main() -> io::Result<()> {
         std::io::stdout().flush()
     }
 
+    let mut env = Environment::default();
     loop {
         print("lip> ")?;
 
@@ -27,7 +28,7 @@ fn main() -> io::Result<()> {
             print(&format!("Failed to parse: {e:?}\n"))?;
             continue;
         }
-        let value = eval(&expr.unwrap());
+        let value = eval(&expr.unwrap(), &mut env);
         if let Err(e) = value {
             print(&format!("Failed to evalueate: {e:?}\n"))?;
             continue;
