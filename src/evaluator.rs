@@ -16,14 +16,14 @@ impl std::fmt::Display for EvalErr {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Value {
     Bool(bool),
-    Operand(parser::Operator),
+    Operator(parser::Operator),
 }
 
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Bool(b) => write!(f, "{b}"),
-            Value::Operand(o) => write!(f, "primitive operator: {o}"),
+            Value::Operator(o) => write!(f, "primitive operator: {o}"),
         }
     }
 }
@@ -46,7 +46,7 @@ fn eval_bool_args(args: &[Expr]) -> Result<impl Iterator<Item = bool>, EvalErr> 
 pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
     match expr {
         Expr::Bool(b) => Ok(Value::Bool(*b)),
-        Expr::Operator(o) => Ok(Value::Operand(*o)),
+        Expr::Operator(o) => Ok(Value::Operator(*o)),
         Expr::Call(operator, args) => match operator {
             parser::Operator::And => {
                 let result = eval_bool_args(args)?.fold(true, |acc, b| acc & b);
@@ -122,7 +122,7 @@ mod tests {
         let tokens = tokenizer::tokenize("(if (^ (& T T)) & |)")?;
         let expr = parser::parse(&tokens)?;
         let value = eval(&expr)?;
-        assert_eq!(Value::Operand(parser::Operator::Or), value);
+        assert_eq!(Value::Operator(parser::Operator::Or), value);
         Ok(())
     }
 }
