@@ -13,11 +13,7 @@ impl<'a> Environment<'a> {
     }
 
     pub fn add(&mut self, var: String, value: Value) {
-        if let Some(e) = self.data.get_mut(&var) {
-            *e = value;
-            return;
-        }
-        self.data.entry(var).or_insert(value);
+        self.data.insert(var, value);
     }
 
     pub fn get(&self, var: &str) -> Option<&Value> {
