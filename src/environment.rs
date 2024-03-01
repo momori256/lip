@@ -1,7 +1,7 @@
 use crate::evaluator::Value;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Environment<'a> {
     data: HashMap<String, Value>,
     outer: Option<&'a Environment<'a>>,
@@ -28,15 +28,6 @@ impl<'a> Environment<'a> {
             return outer.get(var);
         }
         None
-    }
-}
-
-impl std::default::Default for Environment<'_> {
-    fn default() -> Self {
-        Self {
-            data: HashMap::new(),
-            outer: None,
-        }
     }
 }
 

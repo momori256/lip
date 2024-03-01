@@ -242,7 +242,7 @@ mod tests {
 
     fn lambda(args: &[&str], expr: Expr) -> Expr {
         Expr::Lambda(
-            args.into_iter().map(|arg| arg.to_string()).collect(),
+            args.iter().map(|arg| arg.to_string()).collect(),
             Box::new(expr),
         )
     }

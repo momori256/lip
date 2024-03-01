@@ -84,11 +84,11 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
                     )));
                 }
                 let operands: Vec<Value> = operands
-                    .into_iter()
+                    .iter()
                     .map(|operand| eval(operand, env))
                     .collect::<Result<_, EvalErr>>()?;
                 let data: HashMap<String, Value> = args.into_iter().zip(operands).collect();
-                let mut inner = Environment::new(data, Some(&env));
+                let mut inner = Environment::new(data, Some(env));
                 eval(&expr, &mut inner)
             }
             operator => Err(EvalErr::Eval(format!("`{operator} is not an operator`"))),
