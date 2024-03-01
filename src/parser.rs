@@ -51,7 +51,7 @@ impl If {
 pub enum Expr {
     Bool(bool),
     Operator(Operator),
-    Call(Operator, Vec<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
     If(If),
 }
 
@@ -93,19 +93,20 @@ fn parse_call(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
             tokens[0]
         )));
     }
-    let operator = match tokens[1] {
-        Token::And => Operator::And,
-        Token::Or => Operator::Or,
-        Token::Not => Operator::Not,
-        _ => {
-            return Err(ParserErr::Parse(format!(
-                "`{:?}` is not an operator",
-                tokens[1]
-            )));
-        }
-    };
+    let (operator, cnt) = parse_internal(&tokens[1..])?;
+    // let operator = match tokens[1] {
+    //     Token::And => Operator::And,
+    //     Token::Or => Operator::Or,
+    //     Token::Not => Operator::Not,
+    //     _ => {
+    //         return Err(ParserErr::Parse(format!(
+    //             "`{:?}` is not an operator",
+    //             tokens[1]
+    //         )));
+    //     }
+    // };
     let mut operands = Vec::new();
-    let mut p = 2;
+    let mut p = cnt + 1;
     while p < len && tokens[p] != Token::Rparen {
         let (expr, cnt) = parse_internal(&tokens[p..])?;
         operands.push(expr);
@@ -114,7 +115,7 @@ fn parse_call(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     if p >= len || tokens[p] != Token::Rparen {
         return Err(ParserErr::Parse("call is not closed with `)`".to_string()));
     }
-    Ok((Expr::Call(operator, operands), p + 1))
+    Ok((Expr::Call(Box::new(operator), operands), p + 1))
 }
 
 fn parse_if(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
@@ -149,19 +150,23 @@ mod tests {
     use crate::tokenizer;
 
     fn and(exprs: Vec<Expr>) -> Expr {
-        Expr::Call(Operator::And, exprs)
+        call(Expr::Operator(Operator::And), exprs)
     }
 
     fn or(exprs: Vec<Expr>) -> Expr {
-        Expr::Call(Operator::Or, exprs)
+        call(Expr::Operator(Operator::Or), exprs)
     }
 
     fn not(exprs: Vec<Expr>) -> Expr {
-        Expr::Call(Operator::Not, exprs)
+        call(Expr::Operator(Operator::Not), exprs)
     }
 
     fn if_expr(cond: Expr, then: Expr, other: Expr) -> Expr {
         Expr::If(If::new(cond, then, other))
+    }
+
+    fn call(operator: Expr, operands: Vec<Expr>) -> Expr {
+        Expr::Call(Box::new(operator), operands)
     }
 
     #[test]
@@ -214,6 +219,25 @@ mod tests {
                 and(vec![Expr::Bool(true), Expr::Bool(true)]),
                 Expr::Bool(true),
                 or(vec![Expr::Bool(false), Expr::Bool(false)])
+            ),
+            expr
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_if_operator_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("((if T & |) T F)")?;
+        let (expr, cnt) = parse_internal(&tokens)?;
+        assert_eq!(tokens.len(), cnt);
+        assert_eq!(
+            call(
+                if_expr(
+                    Expr::Bool(true),
+                    Expr::Operator(Operator::And),
+                    Expr::Operator(Operator::Or)
+                ),
+                vec![Expr::Bool(true), Expr::Bool(false)]
             ),
             expr
         );
