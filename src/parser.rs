@@ -212,42 +212,42 @@ fn parse_lambda(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::tokenizer;
 
-    fn and(exprs: Vec<Expr>) -> Expr {
+    pub fn and(exprs: Vec<Expr>) -> Expr {
         call(Expr::Operator(Operator::And), exprs)
     }
 
-    fn or(exprs: Vec<Expr>) -> Expr {
+    pub fn or(exprs: Vec<Expr>) -> Expr {
         call(Expr::Operator(Operator::Or), exprs)
     }
 
-    fn not(exprs: Vec<Expr>) -> Expr {
+    pub fn not(exprs: Vec<Expr>) -> Expr {
         call(Expr::Operator(Operator::Not), exprs)
     }
 
-    fn if_expr(cond: Expr, then: Expr, other: Expr) -> Expr {
+    pub fn if_expr(cond: Expr, then: Expr, other: Expr) -> Expr {
         Expr::If(If::new(cond, then, other))
     }
 
-    fn call(operator: Expr, operands: Vec<Expr>) -> Expr {
+    pub fn call(operator: Expr, operands: Vec<Expr>) -> Expr {
         Expr::Call(Box::new(operator), operands)
     }
 
-    fn def(ident: &str, expr: Expr) -> Expr {
+    pub fn def(ident: &str, expr: Expr) -> Expr {
         Expr::Def(ident.to_string(), Box::new(expr))
     }
 
-    fn lambda(args: &[&str], expr: Expr) -> Expr {
+    pub fn lambda(args: &[&str], expr: Expr) -> Expr {
         Expr::Lambda(
             args.iter().map(|arg| arg.to_string()).collect(),
             Box::new(expr),
         )
     }
 
-    fn ident(ident: &str) -> Expr {
+    pub fn ident(ident: &str) -> Expr {
         Expr::Ident(ident.to_string())
     }
 

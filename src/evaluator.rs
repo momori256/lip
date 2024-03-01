@@ -123,21 +123,15 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{parser, tokenizer};
+    use crate::{
+        parser::{
+            self,
+            tests::{and, ident},
+        },
+        tokenizer,
+    };
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
-
-    fn and(exprs: Vec<Expr>) -> Expr {
-        call(Expr::Operator(parser::Operator::And), exprs)
-    }
-
-    fn call(operator: Expr, operands: Vec<Expr>) -> Expr {
-        Expr::Call(Box::new(operator), operands)
-    }
-
-    fn ident(ident: &str) -> Expr {
-        Expr::Ident(ident.to_string())
-    }
 
     #[test]
     fn eval_bool_succeed() -> TestResult {
