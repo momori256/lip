@@ -128,10 +128,9 @@ mod tests {
             self,
             tests::{and, ident},
         },
+        test_util::TestResult,
         tokenizer,
     };
-
-    type TestResult = Result<(), Box<dyn std::error::Error>>;
 
     #[test]
     fn eval_bool_succeed() -> TestResult {

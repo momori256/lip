@@ -214,7 +214,7 @@ fn parse_lambda(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::tokenizer;
+    use crate::{test_util::TestResult, tokenizer};
 
     pub fn and(exprs: Vec<Expr>) -> Expr {
         call(Expr::Operator(Operator::And), exprs)
@@ -252,7 +252,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_bool_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_bool_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("T")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -261,7 +261,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_operator_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_operator_succeed() -> TestResult {
         for (str, operator) in [
             ("&", Operator::And),
             ("|", Operator::Or),
@@ -276,7 +276,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_call_and_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_call_and_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("(& T (| F F T) (^ T))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -292,7 +292,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_if_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_if_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("(if (& T T) T (| F F))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -308,7 +308,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_if_operator_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_if_operator_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("((if T & |) T F)")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -327,7 +327,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_def_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_def_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("(def myvar (& T T F))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -342,7 +342,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_lambda_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_lambda_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         println!("{expr:?}");
@@ -358,7 +358,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_call_lambda_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_call_lambda_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("((lambda (x) (^ x)) (& T))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -373,7 +373,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_ident_succeed() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_ident_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("(if a (& T T) (| b c))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
         assert_eq!(tokens.len(), cnt);
@@ -389,7 +389,7 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_invalid_expr_fail() -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_invalid_expr_fail() -> TestResult {
         let tokens = tokenizer::tokenize("(& T F")?;
         match parse_internal(&tokens) {
             Err(ParserErr::Parse(_)) => (),
