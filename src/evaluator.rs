@@ -18,6 +18,7 @@ impl std::fmt::Display for EvalErr {
 pub enum Value {
     Bool(bool),
     Operator(parser::Operator),
+    Lambda(Vec<String>, Expr),
 }
 
 impl std::fmt::Display for Value {
@@ -25,6 +26,7 @@ impl std::fmt::Display for Value {
         match self {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Operator(o) => write!(f, "primitive operator: {o}"),
+            Value::Lambda(args, expr) => write!(f, "lambda: {args:?} -> {expr:?}"),
         }
     }
 }
@@ -89,6 +91,7 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
             env.add(ident.to_string(), result.clone());
             Ok(result)
         }
+        Expr::Lambda(_, _) => todo!(),
         Expr::Ident(ident) => {
             if let Some(value) = env.get(ident) {
                 Ok(value.clone())
@@ -193,6 +196,15 @@ mod tests {
             let value = eval(&expr, &mut env)?;
             assert_eq!(Value::Bool(true), value);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn eval_lambda_succeed() -> TestResult {
+        let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr, &mut Environment::default())?;
+        assert_eq!(Value::Bool(false), value);
         Ok(())
     }
 }

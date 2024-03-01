@@ -30,7 +30,7 @@ impl std::fmt::Display for Operator {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct If {
     pub cond: Box<Expr>,
     pub then: Box<Expr>,
@@ -47,13 +47,14 @@ impl If {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Expr {
     Bool(bool),
     Operator(Operator),
     Call(Box<Expr>, Vec<Expr>),
     If(If),
     Def(String, Box<Expr>),
+    Lambda(Vec<String>, Box<Expr>),
     Ident(String),
 }
 
@@ -83,6 +84,9 @@ fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     }
     if tokens[1] == Token::Def {
         return parse_def(tokens);
+    }
+    if tokens[1] == Token::Lambda {
+        return parse_lambda(tokens);
     }
     parse_call(tokens)
 }
@@ -166,6 +170,47 @@ fn parse_def(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     Ok((Expr::Def(ident.to_string(), Box::new(expr)), cnt + 4))
 }
 
+fn parse_lambda(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
+    let len = tokens.len();
+    if len < 6 {
+        return Err(ParserErr::Parse("lambda is too short".to_string()));
+    }
+    if tokens[0] != Token::Lparen || tokens[1] != Token::Lambda || tokens[2] != Token::Lparen {
+        return Err(ParserErr::Parse(format!(
+            "lambda must start with `(lambda (`, not `{:?} {:?} {:?}`",
+            tokens[0], tokens[1], tokens[2]
+        )));
+    }
+    let mut p = 3;
+    let mut args = Vec::new();
+    while p < len && tokens[p] != Token::Rparen {
+        match &tokens[p] {
+            Token::Ident(arg) => args.push(arg),
+            token => {
+                return Err(ParserErr::Parse(format!(
+                    "`{token:?}` is not an identifier"
+                )))
+            }
+        }
+        p += 1;
+    }
+    if tokens[p] != Token::Rparen {
+        return Err(ParserErr::Parse(
+            "argument list of lambda is not closed with `)`".to_string(),
+        ));
+    }
+    let (expr, cnt) = parse_internal(&tokens[p + 1..])?;
+    if tokens[p + cnt] != Token::Rparen {
+        return Err(ParserErr::Parse(
+            "lambda is not closed with `)`".to_string(),
+        ));
+    }
+    Ok((
+        Expr::Lambda(args.into_iter().cloned().collect(), Box::new(expr)),
+        p + cnt + 2,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,6 +238,13 @@ mod tests {
 
     fn def(ident: &str, expr: Expr) -> Expr {
         Expr::Def(ident.to_string(), Box::new(expr))
+    }
+
+    fn lambda(args: &[&str], expr: Expr) -> Expr {
+        Expr::Lambda(
+            args.into_iter().map(|arg| arg.to_string()).collect(),
+            Box::new(expr),
+        )
     }
 
     fn ident(ident: &str) -> Expr {
@@ -283,6 +335,37 @@ mod tests {
             def(
                 "myvar",
                 and(vec![Expr::Bool(true), Expr::Bool(true), Expr::Bool(false)])
+            ),
+            expr
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_lambda_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
+        let (expr, cnt) = parse_internal(&tokens)?;
+        println!("{expr:?}");
+        assert_eq!(tokens.len(), cnt);
+        assert_eq!(
+            lambda(
+                &["a", "b"],
+                and(vec![ident("a"), ident("b"), Expr::Bool(true)])
+            ),
+            expr
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_call_lambda_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("((lambda (x) (^ x)) (& T))")?;
+        let (expr, cnt) = parse_internal(&tokens)?;
+        assert_eq!(tokens.len(), cnt);
+        assert_eq!(
+            call(
+                lambda(&["x"], not(vec![ident("x")])),
+                vec![and(vec![Expr::Bool(true)])]
             ),
             expr
         );
