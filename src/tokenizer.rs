@@ -20,6 +20,7 @@ pub enum Token {
     Not,
     True,
     False,
+    If,
 }
 
 impl Token {
@@ -33,6 +34,7 @@ impl Token {
             "^" => Ok(Not),
             "T" => Ok(True),
             "F" => Ok(False),
+            "if" => Ok(If),
             _ => Err(TokenizeErr::Parse(format!("Invalid token `{str}`"))),
         }
     }
@@ -53,9 +55,9 @@ mod tests {
 
     #[test]
     fn tokenize_valid_tokens_parsed_successfully() {
-        let tokens = tokenize("( ) & | ^ T F");
+        let tokens = tokenize("( ) & | ^ T F if");
         assert_eq!(
-            vec![Lparen, Rparen, And, Or, Not, True, False],
+            vec![Lparen, Rparen, And, Or, Not, True, False, If],
             tokens.unwrap()
         );
     }
