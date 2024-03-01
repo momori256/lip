@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::environment::Environment;
 use crate::parser::{self, Expr};
 
@@ -18,6 +20,7 @@ impl std::fmt::Display for EvalErr {
 pub enum Value {
     Bool(bool),
     Operator(parser::Operator),
+    Lambda(Vec<String>, Expr),
 }
 
 impl std::fmt::Display for Value {
@@ -25,6 +28,7 @@ impl std::fmt::Display for Value {
         match self {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Operator(o) => write!(f, "primitive operator: {o}"),
+            Value::Lambda(args, expr) => write!(f, "lambda: {args:?} -> {expr:?}"),
         }
     }
 }
@@ -71,6 +75,22 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
                     Ok(Value::Bool(!operands[0]))
                 }
             },
+            Value::Lambda(args, expr) => {
+                if args.len() != operands.len() {
+                    return Err(EvalErr::Eval(format!(
+                        "the number of arguments ({}) is not the same as that of parameters ({})",
+                        args.len(),
+                        operands.len()
+                    )));
+                }
+                let operands: Vec<Value> = operands
+                    .iter()
+                    .map(|operand| eval(operand, env))
+                    .collect::<Result<_, EvalErr>>()?;
+                let data: HashMap<String, Value> = args.into_iter().zip(operands).collect();
+                let mut inner = Environment::new(data, Some(env));
+                eval(&expr, &mut inner)
+            }
             operator => Err(EvalErr::Eval(format!("`{operator} is not an operator`"))),
         },
         Expr::If(parser::If { cond, then, other }) => {
@@ -89,6 +109,7 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
             env.add(ident.to_string(), result.clone());
             Ok(result)
         }
+        Expr::Lambda(args, expr) => Ok(Value::Lambda(args.clone(), (**expr).clone())),
         Expr::Ident(ident) => {
             if let Some(value) = env.get(ident) {
                 Ok(value.clone())
@@ -102,7 +123,13 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{parser, tokenizer};
+    use crate::{
+        parser::{
+            self,
+            tests::{and, ident},
+        },
+        tokenizer,
+    };
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -192,6 +219,48 @@ mod tests {
             let expr = parser::parse(&tokens)?;
             let value = eval(&expr, &mut env)?;
             assert_eq!(Value::Bool(true), value);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn eval_lambda_succeed() -> TestResult {
+        let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr, &mut Environment::default())?;
+        assert_eq!(
+            Value::Lambda(
+                vec!["a".to_string(), "b".to_string()],
+                and(vec![ident("a"), ident("b"), Expr::Bool(true)])
+            ),
+            value
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn eval_call_lambda_succeed() -> TestResult {
+        let tokens = tokenizer::tokenize("((lambda (a b c) (| a b c)) F F T)")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr, &mut Environment::default())?;
+        assert_eq!(Value::Bool(true), value);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_def_lambda_succeed() -> TestResult {
+        let mut env = Environment::default();
+        {
+            let tokens = tokenizer::tokenize("(def nand (lambda (a b) (^ (& a b))))")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert!(matches!(value, Value::Lambda(_, _)));
+        }
+        {
+            let tokens = tokenizer::tokenize("(nand T T)")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr, &mut env)?;
+            assert_eq!(Value::Bool(false), value);
         }
         Ok(())
     }

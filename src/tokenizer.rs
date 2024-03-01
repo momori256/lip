@@ -22,6 +22,7 @@ pub enum Token {
     False,
     If,
     Def,
+    Lambda,
     Ident(String),
 }
 
@@ -38,6 +39,7 @@ impl Token {
             "F" => Ok(False),
             "if" => Ok(If),
             "def" => Ok(Def),
+            "lambda" => Ok(Lambda),
             str if str.chars().all(|c| c.is_ascii_lowercase()) => Ok(Ident(str.to_string())),
             _ => Err(TokenizeErr::Parse(format!("Invalid token `{str}`"))),
         }
@@ -59,9 +61,9 @@ mod tests {
 
     #[test]
     fn tokenize_valid_tokens_parsed_successfully() {
-        let tokens = tokenize("( ) & | ^ T F if def");
+        let tokens = tokenize("( ) & | ^ T F if def lambda");
         assert_eq!(
-            vec![Lparen, Rparen, And, Or, Not, True, False, If, Def],
+            vec![Lparen, Rparen, And, Or, Not, True, False, If, Def, Lambda],
             tokens.unwrap()
         );
     }
