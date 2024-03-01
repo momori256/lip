@@ -128,16 +128,19 @@ mod tests {
             self,
             tests::{and, ident},
         },
+        test_util::TestResult,
         tokenizer,
     };
 
-    type TestResult = Result<(), Box<dyn std::error::Error>>;
+    fn eval_expr(expr: &str, env: &mut Environment) -> Result<Value, Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize(expr)?;
+        let expr = parser::parse(&tokens)?;
+        Ok(eval(&expr, env)?)
+    }
 
     #[test]
     fn eval_bool_succeed() -> TestResult {
-        let tokens = tokenizer::tokenize("T")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr("T", &mut Environment::default())?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -145,9 +148,7 @@ mod tests {
     #[test]
     fn eval_call_succeed() -> TestResult {
         // true & (false | false | true | false) & (!false) -> true
-        let tokens = tokenizer::tokenize("(& T (| F F T F) (^ F))")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr("(& T (| F F T F) (^ F))", &mut Environment::default())?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -155,9 +156,7 @@ mod tests {
     #[test]
     fn eval_if_succeed() -> TestResult {
         // if true & true { true } else { false | false } -> true
-        let tokens = tokenizer::tokenize("(if (& T T) T (| F F))")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr("(if (& T T) T (| F F))", &mut Environment::default())?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -165,9 +164,7 @@ mod tests {
     #[test]
     fn eval_if_to_operand_succeed() -> TestResult {
         // if !(true & true) { true } else { false | false } -> true
-        let tokens = tokenizer::tokenize("(if (^ (& T T)) & |)")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr("(if (^ (& T T)) & |)", &mut Environment::default())?;
         assert_eq!(Value::Operator(parser::Operator::Or), value);
         Ok(())
     }
@@ -175,9 +172,7 @@ mod tests {
     #[test]
     fn eval_if_to_operator_succeed() -> TestResult {
         // if true { true & false } else { true | false }
-        let tokens = tokenizer::tokenize("((if T & |) T F)")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr("((if T & |) T F)", &mut Environment::default())?;
         assert_eq!(Value::Bool(false), value);
         Ok(())
     }
@@ -197,27 +192,19 @@ mod tests {
     fn eval_def_succeed() -> TestResult {
         let mut env = Environment::default();
         {
-            let tokens = tokenizer::tokenize("(def myvar (& T T F))")?;
-            let expr = parser::parse(&tokens)?;
-            let value = eval(&expr, &mut env)?;
+            let value = eval_expr("(def myvar (& T T F))", &mut env)?;
             assert_eq!(Value::Bool(false), value);
         }
         {
-            let tokens = tokenizer::tokenize("myvar")?;
-            let expr = parser::parse(&tokens)?;
-            let value = eval(&expr, &mut env)?;
+            let value = eval_expr("myvar", &mut env)?;
             assert_eq!(Value::Bool(false), value);
         }
         {
-            let tokens = tokenizer::tokenize("(def myvar (& T T T))")?;
-            let expr = parser::parse(&tokens)?;
-            let value = eval(&expr, &mut env)?;
+            let value = eval_expr("(def myvar (& T T T))", &mut env)?;
             assert_eq!(Value::Bool(true), value);
         }
         {
-            let tokens = tokenizer::tokenize("myvar")?;
-            let expr = parser::parse(&tokens)?;
-            let value = eval(&expr, &mut env)?;
+            let value = eval_expr("myvar", &mut env)?;
             assert_eq!(Value::Bool(true), value);
         }
         Ok(())
@@ -225,9 +212,7 @@ mod tests {
 
     #[test]
     fn eval_lambda_succeed() -> TestResult {
-        let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr("(lambda (a b) (& a b T))", &mut Environment::default())?;
         assert_eq!(
             Value::Lambda(
                 vec!["a".to_string(), "b".to_string()],
@@ -240,9 +225,10 @@ mod tests {
 
     #[test]
     fn eval_call_lambda_succeed() -> TestResult {
-        let tokens = tokenizer::tokenize("((lambda (a b c) (| a b c)) F F T)")?;
-        let expr = parser::parse(&tokens)?;
-        let value = eval(&expr, &mut Environment::default())?;
+        let value = eval_expr(
+            "((lambda (a b c) (| a b c)) F F T)",
+            &mut Environment::default(),
+        )?;
         assert_eq!(Value::Bool(true), value);
         Ok(())
     }
@@ -251,15 +237,11 @@ mod tests {
     fn eval_def_lambda_succeed() -> TestResult {
         let mut env = Environment::default();
         {
-            let tokens = tokenizer::tokenize("(def nand (lambda (a b) (^ (& a b))))")?;
-            let expr = parser::parse(&tokens)?;
-            let value = eval(&expr, &mut env)?;
+            let value = eval_expr("(def nand (lambda (a b) (^ (& a b))))", &mut env)?;
             assert!(matches!(value, Value::Lambda(_, _)));
         }
         {
-            let tokens = tokenizer::tokenize("(nand T T)")?;
-            let expr = parser::parse(&tokens)?;
-            let value = eval(&expr, &mut env)?;
+            let value = eval_expr("(nand T T)", &mut env)?;
             assert_eq!(Value::Bool(false), value);
         }
         Ok(())
