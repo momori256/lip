@@ -27,8 +27,12 @@ fn main() -> io::Result<()> {
             print(&format!("Failed to parse: {e:?}\n"))?;
             continue;
         }
-        let output = eval(&expr.unwrap());
-        print(&format!("=> {output}\n"))?;
+        let value = eval(&expr.unwrap());
+        if let Err(e) = value {
+            print(&format!("Failed to evalueate: {e:?}\n"))?;
+            continue;
+        }
+        print(&format!("{}\n", value.unwrap()))?;
     }
     Ok(())
 }

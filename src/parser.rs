@@ -9,17 +9,32 @@ impl std::error::Error for ParserErr {}
 
 impl std::fmt::Display for ParserErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+        write!(f, "failed to parse")
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Operator {
+    And,
+    Or,
+    Not,
+}
+
+impl std::fmt::Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::And => write!(f, "&"),
+            Operator::Or => write!(f, "|"),
+            Operator::Not => write!(f, "^"),
+        }
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expr {
-    And(Box<Expr>, Box<Expr>),
-    Or(Box<Expr>, Box<Expr>),
-    Not(Box<Expr>),
-    True,
-    False,
+    Bool(bool),
+    Operator(Operator),
+    Call(Operator, Vec<Expr>),
 }
 
 pub fn parse(tokens: &[Token]) -> Result<Expr, ParserErr> {
@@ -34,126 +49,117 @@ fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     let first = tokens[0];
     if first != Token::Lparen {
         return match first {
-            Token::True => Ok((Expr::True, 1)),
-            Token::False => Ok((Expr::False, 1)),
+            Token::True => Ok((Expr::Bool(true), 1)),
+            Token::False => Ok((Expr::Bool(false), 1)),
+            Token::And => Ok((Expr::Operator(Operator::And), 1)),
+            Token::Or => Ok((Expr::Operator(Operator::Or), 1)),
+            Token::Not => Ok((Expr::Operator(Operator::Not), 1)),
             _ => Err(ParserErr::Parse(format!("invalid token `{first:?}`"))),
         };
     }
-    if tokens.len() < 2 {
-        return Err(ParserErr::Parse("`(` is not closed".to_string()));
-    }
-    let operator = tokens[1];
-    match operator {
-        Token::And | Token::Or => parse_binary_operator(operator, tokens),
-        Token::Not => parse_unary_operator(operator, tokens),
-        _ => Err(ParserErr::Parse(format!(
-            "`{operator:?}` is not an operator"
-        ))),
-    }
+    parse_call(tokens)
 }
 
-/// Parse binary operator expression: (op expr expr).
-fn parse_binary_operator(op: Token, tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
-    let (lhs, ln) = parse_internal(&tokens[2..])?;
-    let (rhs, rn) = parse_internal(&tokens[2 + ln..])?;
-    let cnt = 2 + ln + rn;
-    if tokens.len() <= cnt || tokens[cnt] != Token::Rparen {
-        return Err(ParserErr::Parse("`(` is not closed".to_string()));
+fn parse_call(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
+    let len = tokens.len();
+    if len < 3 {
+        return Err(ParserErr::Parse("call is too short".to_string()));
     }
-    let lhs = Box::new(lhs);
-    let rhs = Box::new(rhs);
-    let cnt = cnt + 1;
-    match op {
-        Token::And => Ok((Expr::And(lhs, rhs), cnt)),
-        Token::Or => Ok((Expr::Or(lhs, rhs), cnt)),
-        _ => Err(ParserErr::Parse(format!(
-            "`{op:?}` is not a binary operator"
-        ))),
-    }
-}
 
-/// Parse unary operator expression: (op expr).
-fn parse_unary_operator(op: Token, tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
-    let (expr, ln) = parse_internal(&tokens[2..])?;
-    let cnt = 2 + ln;
-    if tokens.len() <= cnt || tokens[cnt] != Token::Rparen {
-        return Err(ParserErr::Parse("`(` is not closed".to_string()));
+    if tokens[0] != Token::Lparen {
+        return Err(ParserErr::Parse(format!(
+            "call must start with `(`, not `{:?}`",
+            tokens[0]
+        )));
     }
-    let expr = Box::new(expr);
-    let cnt = cnt + 1;
-    match op {
-        Token::Not => Ok((Expr::Not(expr), cnt)),
-        _ => Err(ParserErr::Parse(format!(
-            "`{op:?}` is not an unary operator"
-        ))),
+    let operator = match tokens[1] {
+        Token::And => Operator::And,
+        Token::Or => Operator::Or,
+        Token::Not => Operator::Not,
+        _ => {
+            return Err(ParserErr::Parse(format!(
+                "`{:?}` is not an operator",
+                tokens[1]
+            )));
+        }
+    };
+    let mut operands = Vec::new();
+    let mut p = 2;
+    while p < len && tokens[p] != Token::Rparen {
+        let (expr, cnt) = parse_internal(&tokens[p..])?;
+        operands.push(expr);
+        p += cnt;
     }
+    if p >= len || tokens[p] != Token::Rparen {
+        return Err(ParserErr::Parse("call is not closed with `)`".to_string()));
+    }
+    Ok((Expr::Call(operator, operands), p + 1))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tokenizer::{self, TokenizeErr};
+    use super::*;
+    use crate::tokenizer;
 
-    use super::{Expr::*, *};
-
-    fn and(lhs: Expr, rhs: Expr) -> Expr {
-        Expr::And(Box::new(lhs), Box::new(rhs))
+    fn and(exprs: Vec<Expr>) -> Expr {
+        Expr::Call(Operator::And, exprs)
     }
 
-    fn or(lhs: Expr, rhs: Expr) -> Expr {
-        Expr::Or(Box::new(lhs), Box::new(rhs))
+    fn or(exprs: Vec<Expr>) -> Expr {
+        Expr::Call(Operator::Or, exprs)
     }
 
-    fn not(expr: Expr) -> Expr {
-        Expr::Not(Box::new(expr))
+    fn not(exprs: Vec<Expr>) -> Expr {
+        Expr::Call(Operator::Not, exprs)
     }
 
     #[test]
-    fn parse_and_succeed() -> Result<(), TokenizeErr> {
-        let tokens = tokenizer::tokenize("(& true true)")?;
-        let expr = parse_internal(&tokens);
-        assert_eq!((and(True, True), tokens.len()), expr.unwrap());
+    fn parse_bool_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("T")?;
+        let (expr, cnt) = parse_internal(&tokens)?;
+        assert_eq!(tokens.len(), cnt);
+        assert_eq!(Expr::Bool(true), expr);
         Ok(())
     }
 
     #[test]
-    fn parse_or_succeed() -> Result<(), TokenizeErr> {
-        let tokens = tokenizer::tokenize("(| true true)")?;
-        let expr = parse_internal(&tokens);
-        assert_eq!((or(True, True), tokens.len()), expr.unwrap());
+    fn parse_operator_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        for (str, operator) in [
+            ("&", Operator::And),
+            ("|", Operator::Or),
+            ("^", Operator::Not),
+        ] {
+            let tokens = tokenizer::tokenize(str)?;
+            let (expr, cnt) = parse_internal(&tokens)?;
+            assert_eq!(tokens.len(), cnt);
+            assert_eq!(Expr::Operator(operator), expr);
+        }
         Ok(())
     }
 
     #[test]
-    fn parse_nested_expr_succeed() -> Result<(), TokenizeErr> {
-        let tokens = tokenizer::tokenize("(| (& true false) (^ (^ true)))")?;
-        let expr = parse_internal(&tokens);
+    fn parse_call_and_succeed() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("(& T (| F F T) (^ T))")?;
+        let (expr, cnt) = parse_internal(&tokens)?;
+        assert_eq!(tokens.len(), cnt);
         assert_eq!(
-            (or(and(True, False), not(not(True))), tokens.len()),
-            expr.unwrap()
+            and(vec![
+                Expr::Bool(true),
+                or(vec![Expr::Bool(false), Expr::Bool(false), Expr::Bool(true)]),
+                not(vec![Expr::Bool(true)])
+            ]),
+            expr
         );
         Ok(())
     }
 
     #[test]
-    fn parse_unclosed_expr_fail() -> Result<(), TokenizeErr> {
-        {
-            let tokens = tokenizer::tokenize("(^ false")?;
-            let expr = parse_internal(&tokens);
-            assert!(expr.is_err());
+    fn parse_invalid_expr_fail() -> Result<(), Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize("(& T F")?;
+        match parse_internal(&tokens) {
+            Err(ParserErr::Parse(_)) => (),
+            _ => panic!(),
         }
-        {
-            let tokens = tokenizer::tokenize("(& false true")?;
-            let expr = parse_internal(&tokens);
-            assert!(expr.is_err());
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn parse_invalid_expr_fail() -> Result<(), TokenizeErr> {
-        let tokens = tokenizer::tokenize("(true)")?;
-        let expr = parse_internal(&tokens);
-        assert!(expr.is_err());
         Ok(())
     }
 }
