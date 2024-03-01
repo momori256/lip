@@ -66,6 +66,17 @@ pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
                 Ok(Value::Bool(!args[0]))
             }
         },
+        Expr::If(parser::If { cond, then, other }) => {
+            let cond = match eval(cond)? {
+                Value::Bool(b) => b,
+                value => {
+                    return Err(EvalErr::Eval(format!(
+                        "condition must be bool, not `{value}`"
+                    )))
+                }
+            };
+            eval(if cond { then } else { other })
+        }
     }
 }
 
@@ -92,6 +103,26 @@ mod tests {
         let expr = parser::parse(&tokens)?;
         let value = eval(&expr)?;
         assert_eq!(Value::Bool(true), value);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_if_succeed() -> TestResult {
+        // if true & true { true } else { false | false } -> true
+        let tokens = tokenizer::tokenize("(if (& T T) T (| F F))")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr)?;
+        assert_eq!(Value::Bool(true), value);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_if_to_operand_succeed() -> TestResult {
+        // if !(true & true) { true } else { false | false } -> true
+        let tokens = tokenizer::tokenize("(if (^ (& T T)) & |)")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr)?;
+        assert_eq!(Value::Operand(parser::Operator::Or), value);
         Ok(())
     }
 }
