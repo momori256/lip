@@ -28,43 +28,46 @@ impl std::fmt::Display for Value {
     }
 }
 
-fn eval_bool_args(args: &[Expr]) -> Result<impl Iterator<Item = bool>, EvalErr> {
-    let args: Vec<Value> = args
+fn eval_bool_operands(operands: &[Expr]) -> Result<impl Iterator<Item = bool>, EvalErr> {
+    let operands: Vec<Value> = operands
         .iter()
         .map(eval)
         .collect::<Result<Vec<Value>, EvalErr>>()?;
-    if args.iter().any(|arg| !matches!(arg, Value::Bool(_))) {
+    if operands.iter().any(|arg| !matches!(arg, Value::Bool(_))) {
         return Err(EvalErr::Eval("`operand must be bool".to_string()));
     }
-    let args = args.into_iter().map(|arg| match arg {
+    let operands = operands.into_iter().map(|operand| match operand {
         Value::Bool(b) => b,
         _ => unreachable!(),
     });
-    Ok(args)
+    Ok(operands)
 }
 
 pub fn eval(expr: &Expr) -> Result<Value, EvalErr> {
     match expr {
         Expr::Bool(b) => Ok(Value::Bool(*b)),
         Expr::Operator(o) => Ok(Value::Operator(*o)),
-        Expr::Call(operator, args) => match operator {
-            parser::Operator::And => {
-                let result = eval_bool_args(args)?.fold(true, |acc, b| acc & b);
-                Ok(Value::Bool(result))
-            }
-            parser::Operator::Or => {
-                let result = eval_bool_args(args)?.fold(false, |acc, b| acc | b);
-                Ok(Value::Bool(result))
-            }
-            parser::Operator::Not => {
-                let args: Vec<bool> = eval_bool_args(args)?.collect();
-                if args.len() != 1 {
-                    return Err(EvalErr::Eval(format!(
-                        "the number of arguments of {operator} must be 1"
-                    )));
+        Expr::Call(operator, operands) => match eval(operator)? {
+            Value::Operator(operator) => match operator {
+                parser::Operator::And => {
+                    let result = eval_bool_operands(operands)?.fold(true, |acc, b| acc & b);
+                    Ok(Value::Bool(result))
                 }
-                Ok(Value::Bool(!args[0]))
-            }
+                parser::Operator::Or => {
+                    let result = eval_bool_operands(operands)?.fold(false, |acc, b| acc | b);
+                    Ok(Value::Bool(result))
+                }
+                parser::Operator::Not => {
+                    let operands: Vec<bool> = eval_bool_operands(operands)?.collect();
+                    if operands.len() != 1 {
+                        return Err(EvalErr::Eval(format!(
+                            "the number of arguments of {operator} must be 1"
+                        )));
+                    }
+                    Ok(Value::Bool(!operands[0]))
+                }
+            },
+            operator => Err(EvalErr::Eval(format!("`{operator} is not an operator`"))),
         },
         Expr::If(parser::If { cond, then, other }) => {
             let cond = match eval(cond)? {
@@ -123,6 +126,27 @@ mod tests {
         let expr = parser::parse(&tokens)?;
         let value = eval(&expr)?;
         assert_eq!(Value::Operator(parser::Operator::Or), value);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_if_to_operator_succeed() -> TestResult {
+        // if true { true & false } else { true | false }
+        let tokens = tokenizer::tokenize("((if T & |) T F)")?;
+        let expr = parser::parse(&tokens)?;
+        let value = eval(&expr)?;
+        assert_eq!(Value::Bool(false), value);
+        Ok(())
+    }
+
+    #[test]
+    fn eval_invalid_operator_fail() -> TestResult {
+        let tokens = tokenizer::tokenize("(T T F)")?;
+        let expr = parser::parse(&tokens)?;
+        match eval(&expr) {
+            Err(EvalErr::Eval(_)) => (),
+            _ => panic!(),
+        }
         Ok(())
     }
 }
