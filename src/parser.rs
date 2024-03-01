@@ -345,7 +345,6 @@ pub mod tests {
     fn parse_lambda_succeed() -> TestResult {
         let tokens = tokenizer::tokenize("(lambda (a b) (& a b T))")?;
         let (expr, cnt) = parse_internal(&tokens)?;
-        println!("{expr:?}");
         assert_eq!(tokens.len(), cnt);
         assert_eq!(
             lambda(
