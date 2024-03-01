@@ -98,17 +98,6 @@ fn parse_call(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
         )));
     }
     let (operator, cnt) = parse_internal(&tokens[1..])?;
-    // let operator = match tokens[1] {
-    //     Token::And => Operator::And,
-    //     Token::Or => Operator::Or,
-    //     Token::Not => Operator::Not,
-    //     _ => {
-    //         return Err(ParserErr::Parse(format!(
-    //             "`{:?}` is not an operator",
-    //             tokens[1]
-    //         )));
-    //     }
-    // };
     let mut operands = Vec::new();
     let mut p = cnt + 1;
     while p < len && tokens[p] != Token::Rparen {
