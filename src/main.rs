@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use lip::{evaluator::eval, parser::parse, tokenizer::tokenize, environment::Environment};
+use lip::{environment::Environment, evaluator::eval, parser::parse, tokenizer::tokenize};
 
 fn main() -> io::Result<()> {
     fn print(s: &str) -> io::Result<()> {
