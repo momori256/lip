@@ -46,6 +46,24 @@ impl Token {
     }
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Lparen => write!(f, "("),
+            Token::Rparen => write!(f, ")"),
+            Token::And => write!(f, "&"),
+            Token::Or => write!(f, "|"),
+            Token::Not => write!(f, "^"),
+            Token::True => write!(f, "T"),
+            Token::False => write!(f, "F"),
+            Token::If => write!(f, "if"),
+            Token::Def => write!(f, "def"),
+            Token::Lambda => write!(f, "lambda"),
+            Token::Ident(ident) => write!(f, "`{ident}`"),
+        }
+    }
+}
+
 pub fn tokenize(expr: &str) -> Result<Vec<Token>, TokenizeErr> {
     expr.replace('(', "( ")
         .replace(')', " )")

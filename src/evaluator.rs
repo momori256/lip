@@ -28,7 +28,7 @@ impl std::fmt::Display for Value {
         match self {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Operator(o) => write!(f, "primitive operator: {o}"),
-            Value::Lambda(args, expr) => write!(f, "lambda: {args:?} -> {expr:?}"),
+            Value::Lambda(args, expr) => write!(f, "lambda: ({}) -> {expr}", args.join(" ")),
         }
     }
 }
@@ -245,6 +245,23 @@ mod tests {
             let value = eval_expr("(nand T T)", &mut env)?;
             assert_eq!(Value::Bool(false), value);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn eval_display() -> TestResult {
+        let mut env = Environment::default();
+        assert_eq!(
+            "primitive operator: &",
+            eval_expr("&", &mut env).unwrap().to_string()
+        );
+        assert_eq!("true", eval_expr("T", &mut env).unwrap().to_string());
+        assert_eq!(
+            "lambda: (a b) -> (^ (& a b))",
+            eval_expr("(lambda (a b) (^ (& a b)))", &mut env)
+                .unwrap()
+                .to_string()
+        );
         Ok(())
     }
 }
