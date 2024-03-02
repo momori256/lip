@@ -69,7 +69,7 @@ impl std::fmt::Display for Expr {
                 write!(
                     f,
                     "({operator} {})",
-                    operands.into_iter().map(|o| o.to_string()).join(" ")
+                    operands.iter().map(|o| o.to_string()).join(" ")
                 )
             }
             Expr::If(If { cond, then, other }) => write!(f, "(if {cond} {then} {other})"),
