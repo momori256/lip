@@ -83,13 +83,14 @@ pub fn eval(expr: &Expr, env: &mut Environment) -> Result<Value, EvalErr> {
                         operands.len()
                     )));
                 }
+                let mut env = env.clone();
                 let operands: Vec<Value> = operands
                     .iter()
-                    .map(|operand| eval(operand, env))
+                    .map(|operand| eval(operand, &mut env))
                     .collect::<Result<_, EvalErr>>()?;
                 let data: HashMap<String, Value> = args.into_iter().zip(operands).collect();
-                let mut inner = Environment::new(data, Some(env));
-                eval(&expr, &mut inner)
+                env.extend(data);
+                eval(&expr, &mut env)
             }
             operator => Err(EvalErr::Eval(format!("`{operator} is not an operator`"))),
         },

@@ -1,11 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
-    <meta charset="utf-8">
-    <title>Hello wasm-pack!</title>
+    <meta charset="utf-8" />
+    <title>lip interpreter</title>
+    <link href="index.css" rel="stylesheet" />
   </head>
   <body>
-    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    <h1>lip (in (Rust) (mini Lisp))</h1>
+    <div>
+      <button class="run">&#9205; RUN</button>
+      <button class="clear">&#128465; CLEAR HISTORY</button>
+    </div>
+    <textarea class="numbered" id="text" rows="3" placeholder="Type in lip code..."></textarea>
+    <hr />
+    <ul class="results"></ul>
+    <noscript
+      >This page contains webassembly and javascript content, please enable
+      javascript in your browser.</noscript
+    >
     <script src="./bootstrap.js"></script>
   </body>
 </html>
