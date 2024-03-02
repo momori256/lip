@@ -35,7 +35,7 @@ textarea.value = `(if (& T T F)
   (^ F)
   (| T F F))`;
 
-document.querySelector("button.run").addEventListener("click", (e) => {
+const run = () => {
   const input = textarea.value;
   if (!input.length) {
     return;
@@ -50,7 +50,15 @@ document.querySelector("button.run").addEventListener("click", (e) => {
   }
   const result = new Result(isSuccess, expr, value);
   results.prepend(result.element());
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.ctrlKey) {
+    run();
+  }
 });
+
+document.querySelector("button.run").addEventListener("click", (e) => run());
 
 document.querySelector("button.clear").addEventListener("click", (e) => {
   results.innerHTML = "";
