@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::tokenizer::Token;
 
 #[derive(Debug)]
@@ -58,6 +60,27 @@ pub enum Expr {
     Ident(String),
 }
 
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::Bool(b) => write!(f, "{}", if *b { "T" } else { "F" }),
+            Expr::Operator(o) => write!(f, "{o}"),
+            Expr::Call(operator, operands) => {
+                write!(
+                    f,
+                    "({operator} {})",
+                    operands.into_iter().map(|o| o.to_string()).join(" ")
+                )
+            }
+            Expr::If(If { cond, then, other }) => write!(f, "(if {cond} {then} {other})"),
+
+            Expr::Def(ident, expr) => write!(f, "({ident} := {expr})"),
+            Expr::Lambda(args, expr) => write!(f, "({}) -> {expr}", args.join(" ")),
+            Expr::Ident(ident) => write!(f, "{ident}"),
+        }
+    }
+}
+
 pub fn parse(tokens: &[Token]) -> Result<Expr, ParserErr> {
     let (expr, _) = parse_internal(tokens)?;
     Ok(expr)
@@ -76,7 +99,7 @@ fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
             Token::Or => Ok((Expr::Operator(Operator::Or), 1)),
             Token::Not => Ok((Expr::Operator(Operator::Not), 1)),
             Token::Ident(ident) => Ok((Expr::Ident(ident.to_string()), 1)),
-            _ => Err(ParserErr::Parse(format!("invalid token `{first:?}`"))),
+            _ => Err(ParserErr::Parse(format!("invalid token `{first}`"))),
         };
     }
     if tokens[1] == Token::If {
@@ -124,7 +147,7 @@ fn parse_if(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     }
     if tokens[0] != Token::Lparen || tokens[1] != Token::If {
         return Err(ParserErr::Parse(format!(
-            "if expression must start with `( if`, not `{:?} {:?}`",
+            "if expression must start with `(if`, not `{:?} {:?}`",
             tokens[0], tokens[1]
         )));
     }
@@ -186,11 +209,7 @@ fn parse_lambda(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
     while p < len && tokens[p] != Token::Rparen {
         match &tokens[p] {
             Token::Ident(arg) => args.push(arg),
-            token => {
-                return Err(ParserErr::Parse(format!(
-                    "`{token:?}` is not an identifier"
-                )))
-            }
+            token => return Err(ParserErr::Parse(format!("`{token}` is not an identifier"))),
         }
         p += 1;
     }
@@ -394,6 +413,25 @@ pub mod tests {
             Err(ParserErr::Parse(_)) => (),
             _ => panic!(),
         }
+        Ok(())
+    }
+
+    #[test]
+    fn parse_expr_display() -> TestResult {
+        let expr = |s: &str| -> Expr {
+            let tokens = tokenizer::tokenize(s).unwrap();
+            parse(&tokens).unwrap()
+        };
+        assert_eq!("T", expr("T").to_string());
+        assert_eq!("&", expr("&").to_string());
+        assert_eq!("(& T T)", expr("(& T T)").to_string());
+        assert_eq!("(if T T (& T F))", expr("(if T T (& T F))").to_string());
+        assert_eq!("(x := (^ F))", expr("(def x (^ F))").to_string());
+        assert_eq!(
+            "(a) -> (if a F T)",
+            expr("(lambda (a) (if a F T))").to_string()
+        );
+        assert_eq!("myvar", expr("myvar").to_string());
         Ok(())
     }
 }
