@@ -26,10 +26,7 @@ fn repl_env_command_succeed() -> io::Result<()> {
     let mut output = Cursor::new(Vec::new());
     repl::run(&mut input, &mut output)?;
     assert_eq!(
-        vec![
-            "true",
-            "Environment { data: {\"x\": Bool(true)}, outer: None }"
-        ],
+        vec!["true", "Environment { data: {\"x\": Bool(true)} }"],
         get_outputs(output)
     );
     Ok(())

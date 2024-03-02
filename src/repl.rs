@@ -1,6 +1,42 @@
 use std::io::{self, BufRead, Write};
+use wasm_bindgen::prelude::*;
 
-use crate::{environment::Environment, evaluator::eval, parser::parse, tokenizer::tokenize};
+use crate::{
+    environment::Environment,
+    evaluator::{self, eval, Value},
+    parser::{self, parse},
+    tokenizer::{self, tokenize},
+};
+
+#[wasm_bindgen]
+pub struct Repl {
+    env: Environment,
+}
+
+#[wasm_bindgen]
+impl Repl {
+    pub fn new() -> Self {
+        Self {
+            env: Environment::default(),
+        }
+    }
+
+    pub fn eval(&mut self, expr: &str) -> String {
+        format!("{:?}", self.eval_internal(expr))
+    }
+
+    fn eval_internal(&mut self, expr: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        let tokens = tokenizer::tokenize(expr)?;
+        let expr = parser::parse(&tokens)?;
+        Ok(evaluator::eval(&expr, &mut self.env)?)
+    }
+}
+
+impl std::default::Default for Repl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 pub fn run<R: BufRead, W: Write>(input: &mut R, output: &mut W) -> io::Result<()> {
     let mut print = move |s: &str| {

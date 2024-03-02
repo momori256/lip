@@ -1,15 +1,14 @@
 use crate::evaluator::Value;
 use std::collections::HashMap;
 
-#[derive(Debug, Default)]
-pub struct Environment<'a> {
+#[derive(Debug, Default, Clone)]
+pub struct Environment {
     data: HashMap<String, Value>,
-    outer: Option<&'a Environment<'a>>,
 }
 
-impl<'a> Environment<'a> {
-    pub fn new(data: HashMap<String, Value>, outer: Option<&'a Environment>) -> Self {
-        Self { data, outer }
+impl Environment {
+    pub fn new(data: HashMap<String, Value>) -> Self {
+        Self { data }
     }
 
     pub fn add(&mut self, var: String, value: Value) {
@@ -17,13 +16,11 @@ impl<'a> Environment<'a> {
     }
 
     pub fn get(&self, var: &str) -> Option<&Value> {
-        if let Some(value) = self.data.get(var) {
-            return Some(value);
-        }
-        if let Some(outer) = &self.outer {
-            return outer.get(var);
-        }
-        None
+        self.data.get(var)
+    }
+
+    pub fn extend(&mut self, other: HashMap<String, Value>) {
+        self.data.extend(other)
     }
 }
 
@@ -37,13 +34,5 @@ mod tests {
         assert!(env.get("myvar").is_none());
         env.add("myvar".to_string(), Value::Bool(false));
         assert_eq!(Value::Bool(false), *env.get("myvar").unwrap());
-    }
-
-    #[test]
-    fn environment_layered_succeed() {
-        let env_outer =
-            Environment::new(HashMap::from([("x".to_string(), Value::Bool(true))]), None);
-        let env = Environment::new(HashMap::new(), Some(&env_outer));
-        assert_eq!(Value::Bool(true), *env.get("x").unwrap());
     }
 }

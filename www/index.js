@@ -1,3 +1,5 @@
-import * as wasm from "lip";
+import { Repl } from "lip";
 
-wasm.greet();
+const repl = Repl.new();
+console.log(repl.eval("(def nand (lambda (a b) (^ (& a b))))"));
+console.log(repl.eval("(nand T T)"));
