@@ -102,6 +102,9 @@ fn parse_internal(tokens: &[Token]) -> Result<(Expr, usize), ParserErr> {
             _ => Err(ParserErr::Parse(format!("invalid token `{first}`"))),
         };
     }
+    if tokens.len() < 2 {
+        return Err(ParserErr::Parse("invalid expression".to_string()));
+    }
     if tokens[1] == Token::If {
         return parse_if(tokens);
     }
