@@ -8,12 +8,53 @@
   <body>
     <h1>lip (in (Rust) (mini Lisp))</h1>
     <div>
-      <button class="run">&#9205; RUN</button>
-      <button class="clear">&#128465; CLEAR HISTORY</button>
+      <button class="round-button run">&#9205; RUN</button>
+      <button class="round-button clear">&#128465; CLEAR HISTORY</button>
+      <button class="round-button example">&#128712; EXAMPLE</button>
     </div>
-    <textarea class="numbered" id="text" rows="3" placeholder="Type in lip code..."></textarea>
+    <textarea id="text" rows="3" placeholder="Type in lip code..."></textarea>
     <hr />
     <ul class="results"></ul>
+    <dialog id="example">
+      <div class="flex">
+        <h2>Example</h2>
+        <button class="close">X</button>
+      </div>
+      <ul>
+        <li>
+          <h3>Literal (T = true, F = false)</h3>
+          <div class="card">
+            <pre>T</pre>
+            <p class="ok">=> true</p>
+          </div>
+        </li>
+        <li>
+          <h3>Logical operations (not, and, or)</h3>
+          <div class="card">
+            <pre>(^ (& T (| F F T)))</pre>
+            <p class="ok">=> false (!(true & (false | false | true)))</p>
+          </div>
+        </li>
+        <li>
+          <h3>Branching</h3>
+          <div class="card">
+            <pre>(if T & |)</pre>
+            <p class="ok">=> primitive operator: &</p>
+          </div>
+        </li>
+        <li>
+          <h3>Define variable</h3>
+          <div class="card">
+            <pre>(def nand (lambda (a b) (^ (& a b))))</pre>
+            <p class="ok">=> lambda: (a b) -> (^ (& a b))</p>
+          </div>
+          <div class="card">
+            <pre>(nand T T)</pre>
+            <p class="ok">=> false</p>
+          </div>
+        </li>
+      </ul>
+    </dialog>
     <noscript
       >This page contains webassembly and javascript content, please enable
       javascript in your browser.</noscript
