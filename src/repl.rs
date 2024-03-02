@@ -21,8 +21,11 @@ impl Repl {
         }
     }
 
-    pub fn eval(&mut self, expr: &str) -> String {
-        format!("{:?}", self.eval_internal(expr))
+    pub fn eval(&mut self, expr: &str) -> Result<String, String> {
+        match self.eval_internal(expr) {
+            Ok(value) => Ok(format!("{value}")),
+            Err(e) => Err(format!("{e:?}")),
+        }
     }
 
     fn eval_internal(&mut self, expr: &str) -> Result<Value, Box<dyn std::error::Error>> {

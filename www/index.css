@@ -1,0 +1,16 @@
+ul {
+  list-style: none;
+}
+
+li {
+  border: 1px black solid;
+}
+
+p {
+  &.ok {
+    color: green;
+  }
+  &.ng {
+    color: pink;
+  }
+}
