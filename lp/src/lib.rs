@@ -39,8 +39,8 @@ pub mod tokenizer {
     }
 
     pub fn tokenize(expr: &str) -> Result<Vec<Token>, LpErr> {
-        expr.replace("(", "( ")
-            .replace(")", " )")
+        expr.replace('(', "( ")
+            .replace(')', " )")
             .split_ascii_whitespace()
             .map(|s| match s {
                 "(" => Ok(Token::Lparen),
@@ -100,10 +100,7 @@ pub mod parser {
         if tokens[0] != Token::Lparen {
             return match tokens[0] {
                 Token::Bool(b) => Ok((Expr::Bool(b), 1)),
-                _ => Err(LpErr::Parse(format!(
-                    "expression must not start with `{}`",
-                    tokens[0]
-                ))),
+                _ => Err(LpErr::Parse(format!("invalid expression: `{}`", tokens[0]))),
             };
         }
         let operator = match tokens[1] {
@@ -180,8 +177,8 @@ pub mod evaluator {
                     .collect::<Result<Vec<bool>, LpErr>>()?;
 
                 let value = match operator {
-                    Operator::And => operands.iter().fold(true, |acc, &o| acc && o),
-                    Operator::Or => operands.iter().fold(false, |acc, &o| acc || o),
+                    Operator::And => operands.into_iter().all(|o| o),
+                    Operator::Or => operands.into_iter().any(|o| o),
                     Operator::Not => {
                         let len = operands.len();
                         if len != 1 {
