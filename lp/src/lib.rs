@@ -15,6 +15,16 @@ pub mod tokenizer {
         Not,
     }
 
+    impl std::fmt::Display for Operator {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Operator::And => write!(f, "&"),
+                Operator::Or => write!(f, "|"),
+                Operator::Not => write!(f, "^"),
+            }
+        }
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     pub enum Token {
         Lparen,
@@ -29,11 +39,7 @@ pub mod tokenizer {
                 Token::Lparen => write!(f, "("),
                 Token::Rparen => write!(f, ")"),
                 Token::Bool(b) => write!(f, "{b}"),
-                Token::Operator(o) => match o {
-                    Operator::And => write!(f, "&"),
-                    Operator::Or => write!(f, "|"),
-                    Operator::Not => write!(f, "^"),
-                },
+                Token::Operator(o) => write!(f, "{o}"),
             }
         }
     }
@@ -88,6 +94,7 @@ pub mod parser {
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub enum Expr {
         Bool(bool),
+        Operator(Operator),
         Call(Operator, Vec<Expr>),
     }
 
@@ -100,6 +107,7 @@ pub mod parser {
         if tokens[0] != Token::Lparen {
             return match tokens[0] {
                 Token::Bool(b) => Ok((Expr::Bool(b), 1)),
+                Token::Operator(o) => Ok((Expr::Operator(o), 1)),
                 _ => Err(LpErr::Parse(format!("invalid expression: `{}`", tokens[0]))),
             };
         }
@@ -154,12 +162,14 @@ pub mod evaluator {
     #[derive(Debug, PartialEq, Eq)]
     pub enum Value {
         Bool(bool),
+        Operator(Operator),
     }
 
     impl std::fmt::Display for Value {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Value::Bool(b) => write!(f, "{b}"),
+                Value::Operator(o) => write!(f, "primitive operator: {o}"),
             }
         }
     }
@@ -167,6 +177,7 @@ pub mod evaluator {
     pub fn eval(expr: &Expr) -> Result<Value, LpErr> {
         match expr {
             Expr::Bool(b) => Ok(Value::Bool(*b)),
+            Expr::Operator(o) => Ok(Value::Operator(*o)),
             Expr::Call(operator, operands) => {
                 let operands: Vec<bool> = operands
                     .iter()
