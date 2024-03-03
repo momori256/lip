@@ -1,4 +1,4 @@
-import { Repl } from "lip";
+import { Repl } from "./pkg/lip.js";
 
 const html = String.raw;
 
