@@ -1,7 +1,3 @@
-pub fn f() {
-    println!("test");
-}
-
 #[derive(Debug)]
 pub enum LpErr {
     Tokenize(String),
@@ -25,6 +21,21 @@ pub mod tokenizer {
         Rparen,
         Bool(bool),
         Operator(Operator),
+    }
+
+    impl std::fmt::Display for Token {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Token::Lparen => write!(f, "("),
+                Token::Rparen => write!(f, ")"),
+                Token::Bool(b) => write!(f, "{b}"),
+                Token::Operator(o) => match o {
+                    Operator::And => write!(f, "&"),
+                    Operator::Or => write!(f, "|"),
+                    Operator::Not => write!(f, "^"),
+                },
+            }
+        }
     }
 
     pub fn tokenize(expr: &str) -> Result<Vec<Token>, LpErr> {
@@ -89,12 +100,15 @@ pub mod parser {
         if tokens[0] != Token::Lparen {
             return match tokens[0] {
                 Token::Bool(b) => Ok((Expr::Bool(b), 1)),
-                _ => Err(LpErr::Parse(format!("invalid expression: `{tokens:?}`"))),
+                _ => Err(LpErr::Parse(format!(
+                    "expression must not start with `{}`",
+                    tokens[0]
+                ))),
             };
         }
         let operator = match tokens[1] {
             Token::Operator(o) => o,
-            _ => return Err(LpErr::Parse(format!("invalid operator: `{:?}`", tokens[2]))),
+            _ => return Err(LpErr::Parse(format!("invalid operator: `{}`", tokens[1]))),
         };
         let mut p = 2;
         let mut operands = vec![];
@@ -145,6 +159,14 @@ pub mod evaluator {
         Bool(bool),
     }
 
+    impl std::fmt::Display for Value {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Value::Bool(b) => write!(f, "{b}"),
+            }
+        }
+    }
+
     pub fn eval(expr: &Expr) -> Result<Value, LpErr> {
         match expr {
             Expr::Bool(b) => Ok(Value::Bool(*b)),
@@ -177,8 +199,8 @@ pub mod evaluator {
 
     #[cfg(test)]
     mod tests {
-        use crate::{tokenizer, parser};
         use super::*;
+        use crate::{parser, tokenizer};
 
         #[test]
         fn eval_works() -> Result<(), LpErr> {
