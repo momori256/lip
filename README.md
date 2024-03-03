@@ -1,4 +1,4 @@
-# lip
+# lip ![example workflow](https://github.com/momori256/lip/actions/workflows/general.yml/badge.svg)
 
 **lip** is a logical operation language designed for performing logical operations using a Lisp-like syntax ([Live Demo](https://momori256.github.io/lip/www/)). This repository contains CLI and WebAssembly (WASM) runtimes implemented in Rust.
 
