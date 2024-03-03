@@ -1,13 +1,6 @@
-[package]
-name = "lip"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies]
-itertools = "0.12.1"
-wasm-bindgen = "0.2.91"
+[workspace]
+members = [
+    "lip", "lp",
+]
+resolver = "2"
+default-members = ["lip"]
