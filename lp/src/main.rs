@@ -1,3 +1,5 @@
+use lp;
+
 fn main() {
-    println!("Hello, world!");
+    lp::f();
 }
