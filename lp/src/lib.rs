@@ -31,6 +31,7 @@ pub mod tokenizer {
         Rparen,
         Bool(bool),
         Operator(Operator),
+        If,
     }
 
     impl std::fmt::Display for Token {
@@ -40,6 +41,7 @@ pub mod tokenizer {
                 Token::Rparen => write!(f, ")"),
                 Token::Bool(b) => write!(f, "{b}"),
                 Token::Operator(o) => write!(f, "{o}"),
+                Token::If => write!(f, "if"),
             }
         }
     }
@@ -56,6 +58,7 @@ pub mod tokenizer {
                 "&" => Ok(Token::Operator(Operator::And)),
                 "|" => Ok(Token::Operator(Operator::Or)),
                 "^" => Ok(Token::Operator(Operator::Not)),
+                "if" => Ok(Token::If),
                 _ => Err(LpErr::Tokenize(format!("invalid token `{s}`"))),
             })
             .collect::<Result<Vec<Token>, LpErr>>()
@@ -67,7 +70,7 @@ pub mod tokenizer {
 
         #[test]
         fn tokenize_works() -> Result<(), LpErr> {
-            let tokens = tokenize("( ) T F & | ^")?;
+            let tokens = tokenize("( ) T F & | ^ if")?;
             assert_eq!(
                 vec![
                     Token::Lparen,
@@ -76,7 +79,8 @@ pub mod tokenizer {
                     Token::Bool(false),
                     Token::Operator(Operator::And),
                     Token::Operator(Operator::Or),
-                    Token::Operator(Operator::Not)
+                    Token::Operator(Operator::Not),
+                    Token::If,
                 ],
                 tokens
             );
@@ -95,7 +99,8 @@ pub mod parser {
     pub enum Expr {
         Bool(bool),
         Operator(Operator),
-        Call(Operator, Vec<Expr>),
+        Call(Box<Expr>, Vec<Expr>),
+        If(Box<Expr>, Box<Expr>, Box<Expr>),
     }
 
     pub fn parse(tokens: &[Token]) -> Result<Expr, LpErr> {
@@ -111,18 +116,34 @@ pub mod parser {
                 _ => Err(LpErr::Parse(format!("invalid expression: `{}`", tokens[0]))),
             };
         }
-        let operator = match tokens[1] {
-            Token::Operator(o) => o,
-            _ => return Err(LpErr::Parse(format!("invalid operator: `{}`", tokens[1]))),
-        };
-        let mut p = 2;
+        if tokens[1] == Token::If {
+            return parse_if(tokens);
+        }
+
+        let mut p = 1;
+        let (operator, consumed) = parse_internal(&tokens[p..])?;
+        p += consumed;
         let mut operands = vec![];
         while tokens[p] != Token::Rparen {
             let (expr, consumed) = parse_internal(&tokens[p..])?;
             operands.push(expr);
             p += consumed;
         }
-        Ok((Expr::Call(operator, operands), p + 1))
+        Ok((Expr::Call(Box::new(operator), operands), p + 1))
+    }
+
+    fn parse_if(tokens: &[Token]) -> Result<(Expr, usize), LpErr> {
+        let mut p = 2;
+        let (cond, consumed) = parse_internal(&tokens[p..])?;
+        p += consumed;
+        let (then, consumed) = parse_internal(&tokens[p..])?;
+        p += consumed;
+        let (r#else, consumed) = parse_internal(&tokens[p..])?;
+        p += consumed;
+        Ok((
+            Expr::If(Box::new(cond), Box::new(then), Box::new(r#else)),
+            p + 1,
+        ))
     }
 
     #[cfg(test)]
@@ -134,15 +155,19 @@ pub mod parser {
         const F: Expr = Expr::Bool(false);
 
         fn and(operands: &[Expr]) -> Expr {
-            Expr::Call(Operator::And, operands.to_vec())
+            Expr::Call(Box::new(Expr::Operator(Operator::And)), operands.to_vec())
         }
 
         fn or(operands: &[Expr]) -> Expr {
-            Expr::Call(Operator::Or, operands.to_vec())
+            Expr::Call(Box::new(Expr::Operator(Operator::Or)), operands.to_vec())
         }
 
         fn not(operands: &[Expr]) -> Expr {
-            Expr::Call(Operator::Not, operands.to_vec())
+            Expr::Call(Box::new(Expr::Operator(Operator::Not)), operands.to_vec())
+        }
+
+        fn r#if(cond: Expr, then: Expr, r#else: Expr) -> Expr {
+            Expr::If(Box::new(cond), Box::new(then), Box::new(r#else))
         }
 
         #[test]
@@ -151,6 +176,22 @@ pub mod parser {
             let (expr, consumed) = parse_internal(&tokens)?;
             assert_eq!(tokens.len(), consumed);
             assert_eq!(not(&[and(&[T, F, or(&[F, F])])]), expr);
+            Ok(())
+        }
+
+        #[test]
+        fn parse_if_works() -> Result<(), LpErr> {
+            let tokens = tokenizer::tokenize("(if T & |)")?;
+            let (expr, consumed) = parse_internal(&tokens)?;
+            assert_eq!(tokens.len(), consumed);
+            assert_eq!(
+                r#if(
+                    T,
+                    Expr::Operator(Operator::And),
+                    Expr::Operator(Operator::Or)
+                ),
+                expr
+            );
             Ok(())
         }
     }
@@ -187,20 +228,30 @@ pub mod evaluator {
                     })
                     .collect::<Result<Vec<bool>, LpErr>>()?;
 
-                let value = match operator {
-                    Operator::And => operands.into_iter().all(|o| o),
-                    Operator::Or => operands.into_iter().any(|o| o),
-                    Operator::Not => {
-                        let len = operands.len();
-                        if len != 1 {
-                            return Err(LpErr::Eval(format!(
-                                "not must have 1 operands, not {len}"
-                            )));
+                let value = match eval(operator)? {
+                    Value::Operator(o) => match o {
+                        Operator::And => operands.into_iter().all(|o| o),
+                        Operator::Or => operands.into_iter().any(|o| o),
+                        Operator::Not => {
+                            let len = operands.len();
+                            if len != 1 {
+                                return Err(LpErr::Eval(format!(
+                                    "not must have 1 operands, not {len}"
+                                )));
+                            }
+                            !operands[0]
                         }
-                        !operands[0]
-                    }
+                    },
+                    value => return Err(LpErr::Eval(format!("invalid operator: {value}"))),
                 };
                 Ok(Value::Bool(value))
+            }
+            Expr::If(cond, then, r#else) => {
+                let cond = match eval(cond)? {
+                    Value::Bool(cond) => cond,
+                    value => return Err(LpErr::Eval(format!("invalid condition: {value}"))),
+                };
+                eval(if cond { then } else { r#else })
             }
         }
     }
@@ -217,6 +268,16 @@ pub mod evaluator {
             let expr = parser::parse(&tokens)?;
             let value = eval(&expr)?;
             assert_eq!(Value::Bool(true), value);
+            Ok(())
+        }
+
+        #[test]
+        fn eval_if_works() -> Result<(), LpErr> {
+            // (if T & |) => &, (& T F) => F
+            let tokens = tokenizer::tokenize("((if T & |) T F)")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr)?;
+            assert_eq!(Value::Bool(false), value);
             Ok(())
         }
     }
