@@ -5,6 +5,16 @@ pub enum LpErr {
     Eval(String),
 }
 
+impl std::fmt::Display for LpErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            LpErr::Tokenize(e) => write!(f, "tokenize ({e})"),
+            LpErr::Parse(e) => write!(f, "parse ({e})"),
+            LpErr::Eval(e) => write!(f, "eval ({e})"),
+        }
+    }
+}
+
 pub mod tokenizer {
     use super::LpErr;
 

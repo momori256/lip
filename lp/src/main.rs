@@ -22,7 +22,7 @@ fn main() -> io::Result<()> {
                 println!("=> {value}");
                 io::stdout().flush()?;
             }
-            Err(e) => eprintln!("error: {e:?}"),
+            Err(e) => eprintln!("error: {e}"),
         }
     }
     Ok(())
