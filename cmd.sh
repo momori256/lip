@@ -2,11 +2,10 @@
 
 case "$1" in
 "build")
-	wasm-pack build --no-pack --out-dir ./www/pkg
-	rm ./www/pkg/.gitignore ./www/pkg/README.md
+	wasm-pack build --no-pack --target web --out-dir ./www/pkg
+	rm ./www/pkg/.gitignore
 	;;
 "start")
-	npm --prefix www install
-	npm --prefix www run start
+	miniserve www --index "index.html" -p 8080
 	;;
 esac
