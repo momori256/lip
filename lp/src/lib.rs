@@ -6,9 +6,10 @@ pub fn f() {
 pub enum LpErr {
     Tokenize(String),
     Parse(String),
+    Eval(String),
 }
 
-mod tokenizer {
+pub mod tokenizer {
     use super::LpErr;
 
     #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -67,9 +68,9 @@ mod tokenizer {
     }
 }
 
-mod Parser {
+pub mod parser {
     use super::{
-        tokenizer::{self, Operator, Token},
+        tokenizer::{Operator, Token},
         LpErr,
     };
 
@@ -108,6 +109,7 @@ mod Parser {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::tokenizer;
 
         const T: Expr = Expr::Bool(true);
         const F: Expr = Expr::Bool(false);
@@ -135,6 +137,57 @@ mod Parser {
     }
 }
 
-pub fn eval() {
-    todo!()
+pub mod evaluator {
+    use super::{parser::Expr, tokenizer::Operator, LpErr};
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum Value {
+        Bool(bool),
+    }
+
+    pub fn eval(expr: &Expr) -> Result<Value, LpErr> {
+        match expr {
+            Expr::Bool(b) => Ok(Value::Bool(*b)),
+            Expr::Call(operator, operands) => {
+                let operands: Vec<bool> = operands
+                    .iter()
+                    .map(|o| match eval(o) {
+                        Ok(Value::Bool(b)) => Ok(b),
+                        _ => Err(LpErr::Eval(format!("invalid operand: {o:?}"))),
+                    })
+                    .collect::<Result<Vec<bool>, LpErr>>()?;
+
+                let value = match operator {
+                    Operator::And => operands.iter().fold(true, |acc, &o| acc && o),
+                    Operator::Or => operands.iter().fold(false, |acc, &o| acc || o),
+                    Operator::Not => {
+                        let len = operands.len();
+                        if len != 1 {
+                            return Err(LpErr::Eval(format!(
+                                "not must have 1 operands, not {len}"
+                            )));
+                        }
+                        !operands[0]
+                    }
+                };
+                Ok(Value::Bool(value))
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::{tokenizer, parser};
+        use super::*;
+
+        #[test]
+        fn eval_works() -> Result<(), LpErr> {
+            // !(true & false & (false | false)) => true
+            let tokens = tokenizer::tokenize("(^ (& T F (| F F)))")?;
+            let expr = parser::parse(&tokens)?;
+            let value = eval(&expr)?;
+            assert_eq!(Value::Bool(true), value);
+            Ok(())
+        }
+    }
 }
