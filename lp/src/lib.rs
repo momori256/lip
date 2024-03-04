@@ -1,3 +1,5 @@
+use wasm_bindgen::prelude::*;
+
 #[derive(Debug)]
 pub enum LpErr {
     Tokenize(String),
@@ -290,5 +292,19 @@ pub mod evaluator {
             assert_eq!(Value::Bool(false), value);
             Ok(())
         }
+    }
+}
+
+#[wasm_bindgen]
+pub struct Repl;
+
+#[wasm_bindgen]
+impl Repl {
+    pub fn eval(input: &str) -> Result<String, String> {
+        tokenizer::tokenize(input)
+            .and_then(|tokens| parser::parse(&tokens))
+            .and_then(|expr| evaluator::eval(&expr))
+            .map(|value| value.to_string())
+            .map_err(|e| format!("error: {e}"))
     }
 }
