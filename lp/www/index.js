@@ -1,9 +1,6 @@
-import init, { Repl } from "./pkg/lp.js";
+import { Repl } from "lp";
 
-(async () => {
-  await init();
-  exec();
-})();
+exec();
 
 function exec() {
   const input = document.querySelector("input");

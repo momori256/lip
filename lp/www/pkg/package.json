@@ -1,0 +1,16 @@
+{
+  "name": "lp",
+  "version": "0.1.0",
+  "files": [
+    "lp_bg.wasm",
+    "lp.js",
+    "lp_bg.js",
+    "lp.d.ts"
+  ],
+  "module": "lp.js",
+  "types": "lp.d.ts",
+  "sideEffects": [
+    "./lp.js",
+    "./snippets/*"
+  ]
+}
