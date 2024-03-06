@@ -1,7 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
-export function repl_new(): number;
 export function repl_eval(a: number, b: number, c: number): void;
 export function __wbg_repl_free(a: number): void;
 export function __wbindgen_add_to_stack_pointer(a: number): number;

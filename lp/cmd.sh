@@ -2,10 +2,18 @@
 
 case "$1" in
 "build")
-	wasm-pack build --no-pack --target web --out-dir ./www/pkg
+	wasm-pack build --target bundler --out-dir ./www/pkg
 	rm ./www/pkg/.gitignore
 	;;
-"start")
-	miniserve www --index "index.html" -p 8080
+"build-all")
+	wasm-pack build --target bundler --out-dir ./www/pkg
+	rm ./www/pkg/.gitignore
+	npm --prefix www run build
+	;;
+"serve")
+	npm --prefix www run serve
+	;;
+"serve-dist")
+	miniserve www/dist --index "index.html" -p 8080
 	;;
 esac
